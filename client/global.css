@@ -1,0 +1,80 @@
+/** @import must precede all other statements */
+@import url("https://fonts.googleapis.com/css2?family=Tahoma:wght@400;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  direction: rtl;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 348 83% 47%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 273 73% 35%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 348 83% 47%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 273 73% 35%;
+
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    font-family: "Tahoma", sans-serif;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Tahoma", sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-foreground font-bold;
+    font-family: "Tahoma", sans-serif;
+  }
+
+  button {
+    @apply rounded-xl transition-all duration-300;
+  }
+}
+
+@layer utilities {
+  .shm-gradient {
+    @apply bg-gradient-to-r from-[#8B0000] to-[#5A189A];
+  }
+  .shm-gradient-hover {
+    @apply hover:scale-[1.02] active:scale-[0.98] transition-all duration-200;
+  }
+  .shm-text-gradient {
+    @apply bg-gradient-to-r from-[#8B0000] to-[#5A189A] bg-clip-text text-transparent;
+  }
+  .shm-card {
+    @apply bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 rounded-2xl p-6;
+  }
+}
