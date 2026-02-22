@@ -22,6 +22,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
+    "arabic-persian-reshaper": "^1.0.1",
+    "bidi-js": "^1.0.3",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "groq-sdk": "^0.37.0",

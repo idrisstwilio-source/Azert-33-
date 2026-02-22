@@ -3,6 +3,7 @@ import Groq from "groq-sdk";
 import PDFDocument from "pdfkit";
 import { supabaseAdmin, ensureBucketExists } from "../lib/supabase";
 import { Readable } from "stream";
+import { prepareArabicText, fetchAsset, ASSETS, BISMILLAH } from "../lib/pdf-utils";
 
 export const handleGenerateReport: RequestHandler = async (req, res) => {
   if (!supabaseAdmin) {
@@ -29,6 +30,7 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
       أنت مساعد خبير في الكشافة الحسنية المغربية (SHM).
       قم بإعادة صياغة التقرير التالي بشكل احترافي ومؤسساتي، مع احترام القيم الكشفية.
       يجب أن يكون التقرير واضحاً ومنظماً وجاهزاً للأرشفة باللغة العربية.
+      هام جداً: يجب أن يكون التقرير مختصراً بحيث لا يتجاوز صفحة واحدة A4 عند طباعته.
 
       البيانات الأصلية:
       العنوان: ${title}
@@ -52,17 +54,24 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
 
     const reformulatedContent = chatCompletion.choices[0]?.message?.content || description;
 
-    // 2. Generate PDF
-    const doc = new PDFDocument();
+    // 2. Fetch Assets for PDF
+    const [arabicFont, logoLeft, logoRight] = await Promise.all([
+      fetchAsset(ASSETS.ARABIC_FONT),
+      fetchAsset(ASSETS.LOGO_LEFT),
+      fetchAsset(ASSETS.LOGO_RIGHT),
+    ]);
+
+    // 3. Generate PDF
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
     const buffers: Buffer[] = [];
     doc.on("data", buffers.push.bind(buffers));
-    
+
     return new Promise((resolve) => {
       doc.on("end", async () => {
         const pdfBuffer = Buffer.concat(buffers);
         const fileName = `report_${Date.now()}.pdf`;
 
-        // 3. Upload to Supabase Storage
+        // 4. Upload to Supabase Storage
         const { data: storageData, error: storageError } = await supabaseAdmin
           .storage
           .from("shm-reports")
@@ -79,7 +88,7 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
           .from("shm-reports")
           .getPublicUrl(fileName);
 
-        // 4. Save to Database
+        // 5. Save to Database
         const { error: dbError } = await supabaseAdmin
           .from("reports")
           .insert({
@@ -110,32 +119,64 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
         resolve(null);
       });
 
-      // PDF Content (Basic Arabic support in PDFKit might be limited without a font, but let's try)
-      doc.fontSize(20).text("تقرير نشاط - الكشافة الحسنية المغربية", { align: "center" });
-      doc.moveDown();
-      doc.fontSize(14).text(`العنوان: ${title}`);
-      doc.text(`المكان: ${location}`);
-      doc.text(`الوقت: ${time}`);
-      doc.text(`عدد القادة: ${leadersCount}`);
-      doc.text(`الفئة: ${category}`);
-      doc.text(`لفائدة: ${beneficiary}`);
-      doc.text(`المشاركون: ${boysCount} ذكور / ${girlsCount} إناث`);
-      doc.moveDown();
-      doc.fontSize(16).text("الهدف", { underline: true });
-      doc.fontSize(12).text(objective);
-      doc.moveDown();
-      doc.fontSize(16).text("الوصف (إعادة صياغة IA)", { underline: true });
-      doc.fontSize(12).text(reformulatedContent);
-      doc.moveDown();
-      doc.fontSize(16).text("التقييم", { underline: true });
-      doc.text("النقط الإيجابية:");
-      doc.text(evaluationPositive);
-      doc.text("النقط السلبية:");
-      doc.text(evaluationNegative);
-      doc.moveDown();
-      doc.fontSize(16).text("التوصيات", { underline: true });
-      doc.fontSize(12).text(recommendations);
-      
+      // Register Arabic Font
+      doc.registerFont("ArabicFont", arabicFont);
+      doc.font("ArabicFont");
+
+      // Header Layout
+      // 1. Bismillah top right
+      doc.fontSize(12).text(prepareArabicText(BISMILLAH), { align: "right" });
+      doc.moveDown(0.5);
+
+      // 2. Logos on sides
+      const logoY = 40;
+      doc.image(logoLeft, 40, logoY, { height: 60 });
+      doc.image(logoRight, 495, logoY, { height: 60 }); // 595 (A4 width) - 40 (margin) - 60 (width) = 495
+
+      doc.moveDown(2);
+
+      // 3. Main Title
+      doc.fontSize(22).text(prepareArabicText("تقرير نشاط - الكشافة الحسنية المغربية"), { align: "center", underline: true });
+      doc.moveDown(1);
+
+      // 4. Information Grid (Arabic style - RTL)
+      const labelSize = 12;
+      const contentSize = 11;
+
+      const drawField = (label: string, value: string) => {
+        doc.fontSize(labelSize).fillColor("#8B0000").text(prepareArabicText(label + ": "), { align: "right", continued: true });
+        doc.fontSize(contentSize).fillColor("black").text(prepareArabicText(value), { align: "right" });
+        doc.moveDown(0.4);
+      };
+
+      drawField("العنوان", title);
+      drawField("المكان", location);
+      drawField("الوقت", time);
+      drawField("الفئة", category);
+      drawField("لفائدة", beneficiary);
+      drawField("عدد القادة", leadersCount.toString());
+      drawField("المشاركون", `${boysCount} ذكور / ${girlsCount} إناث`);
+
+      doc.moveDown(1);
+
+      // 5. Sections
+      const drawSection = (label: string, value: string) => {
+        if (!value) return;
+        doc.fontSize(14).fillColor("#5A189A").text(prepareArabicText(label), { align: "right", underline: true });
+        doc.fontSize(10).fillColor("black").text(prepareArabicText(value), { align: "right" });
+        doc.moveDown(0.8);
+      };
+
+      drawSection("الهدف", objective);
+      drawSection("الوصف (تقرير بيداغوجي)", reformulatedContent);
+      drawSection("النقط الإيجابية", evaluationPositive);
+      drawSection("النقط السلبية", evaluationNegative);
+      drawSection("التوصيات", recommendations);
+
+      // Footer - One Page A4 Constraint
+      // If we are getting too low on the page, we might need to adjust.
+      // But for a single page, we just end here.
+
       doc.end();
     });
 

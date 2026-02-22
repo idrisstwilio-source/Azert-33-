@@ -2,6 +2,7 @@ import { RequestHandler } from "express";
 import Groq from "groq-sdk";
 import PDFDocument from "pdfkit";
 import { supabaseAdmin, ensureBucketExists } from "../lib/supabase";
+import { prepareArabicText, fetchAsset, ASSETS, BISMILLAH } from "../lib/pdf-utils";
 
 export const handleGenerateSession: RequestHandler = async (req, res) => {
   if (!supabaseAdmin) {
@@ -26,6 +27,7 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
       أنت مساعد خبير في الكشافة الحسنية المغربية (SHM).
       قم بإعادة صياغة بطاقة الجلسة التالية بشكل احترافي وبيداغوجي.
       استخدم طريقة 5W لهيكلة المحتوى بشكل أمثل باللغة العربية.
+      هام جداً: يجب أن يكون المحتوى مختصراً بحيث لا يتجاوز صفحة واحدة A4 عند طباعته.
 
       البيانات الأصلية:
       العنوان: ${title}
@@ -45,17 +47,24 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
 
     const reformulatedContent = chatCompletion.choices[0]?.message?.content || methodology;
 
-    // 2. Generate PDF
-    const doc = new PDFDocument();
+    // 2. Fetch Assets for PDF
+    const [arabicFont, logoLeft, logoRight] = await Promise.all([
+      fetchAsset(ASSETS.ARABIC_FONT),
+      fetchAsset(ASSETS.LOGO_LEFT),
+      fetchAsset(ASSETS.LOGO_RIGHT),
+    ]);
+
+    // 3. Generate PDF
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
     const buffers: Buffer[] = [];
     doc.on("data", buffers.push.bind(buffers));
-    
+
     return new Promise((resolve) => {
       doc.on("end", async () => {
         const pdfBuffer = Buffer.concat(buffers);
         const fileName = `session_${Date.now()}.pdf`;
 
-        // 3. Upload to Supabase Storage
+        // 4. Upload to Supabase Storage
         const { data: storageData, error: storageError } = await supabaseAdmin
           .storage
           .from("shm-sessions")
@@ -72,7 +81,7 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
           .from("shm-sessions")
           .getPublicUrl(fileName);
 
-        // 4. Save to Database
+        // 5. Save to Database
         const { error: dbError } = await supabaseAdmin
           .from("sessions")
           .insert({
@@ -96,20 +105,54 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
         resolve(null);
       });
 
-      // PDF Content
-      doc.fontSize(20).text("بطاقة جلسة - الكشافة الحسنية المغربية", { align: "center" });
-      doc.moveDown();
-      doc.fontSize(14).text(`العنوان: ${title}`);
-      doc.text(`التاريخ/الوقت: ${dateTime}`);
-      doc.text(`المكان: ${location}`);
-      doc.text(`الفئة المستهدفة: ${targetAudience}`);
-      doc.moveDown();
-      doc.fontSize(16).text("الهدف (Why)", { underline: true });
-      doc.fontSize(12).text(objective);
-      doc.moveDown();
-      doc.fontSize(16).text("طريقة السير / المحتوى (How)", { underline: true });
-      doc.fontSize(12).text(reformulatedContent);
-      
+      // Register Arabic Font
+      doc.registerFont("ArabicFont", arabicFont);
+      doc.font("ArabicFont");
+
+      // Header Layout
+      // 1. Bismillah top right
+      doc.fontSize(12).text(prepareArabicText(BISMILLAH), { align: "right" });
+      doc.moveDown(0.5);
+
+      // 2. Logos on sides
+      const logoY = 40;
+      doc.image(logoLeft, 40, logoY, { height: 60 });
+      doc.image(logoRight, 495, logoY, { height: 60 });
+
+      doc.moveDown(2);
+
+      // 3. Main Title
+      doc.fontSize(22).text(prepareArabicText("بطاقة جلسة بيداغوجية - SHM"), { align: "center", underline: true });
+      doc.moveDown(1);
+
+      // 4. Information Grid (Arabic style - RTL)
+      const labelSize = 12;
+      const contentSize = 11;
+
+      const drawField = (label: string, value: string) => {
+        doc.fontSize(labelSize).fillColor("#8B0000").text(prepareArabicText(label + ": "), { align: "right", continued: true });
+        doc.fontSize(contentSize).fillColor("black").text(prepareArabicText(value), { align: "right" });
+        doc.moveDown(0.4);
+      };
+
+      drawField("العنوان", title);
+      drawField("المكان", location);
+      drawField("التاريخ/الوقت", dateTime);
+      drawField("الفئة المستهدفة", targetAudience);
+
+      doc.moveDown(1);
+
+      // 5. Sections
+      const drawSection = (label: string, value: string) => {
+        if (!value) return;
+        doc.fontSize(14).fillColor("#5A189A").text(prepareArabicText(label), { align: "right", underline: true });
+        doc.fontSize(10).fillColor("black").text(prepareArabicText(value), { align: "right" });
+        doc.moveDown(0.8);
+      };
+
+      drawSection("الهدف (Why)", objective);
+      drawSection("طريقة السير / المحتوى (How - 5W)", reformulatedContent);
+
       doc.end();
     });
 
