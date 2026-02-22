@@ -30,6 +30,11 @@ export default function Reports() {
     const fetchData = async () => {
       setLoading(true);
       try {
+        if (!supabase) {
+          console.warn("Supabase client not initialized");
+          setLoading(false);
+          return;
+        }
         const { data: reportsData } = await supabase
           .from("reports")
           .select("*")

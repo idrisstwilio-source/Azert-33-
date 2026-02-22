@@ -4,6 +4,11 @@ import PDFDocument from "pdfkit";
 import { supabaseAdmin, ensureBucketExists } from "../lib/supabase";
 
 export const handleGenerateSession: RequestHandler = async (req, res) => {
+  if (!supabaseAdmin) {
+    console.error("Supabase Admin client not initialized");
+    res.status(500).json({ error: "Server configuration error: Supabase not configured" });
+    return;
+  }
   const {
     title, dateTime, targetAudience, objective, methodology, location
   } = req.body;

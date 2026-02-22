@@ -5,6 +5,11 @@ import { supabaseAdmin, ensureBucketExists } from "../lib/supabase";
 import { Readable } from "stream";
 
 export const handleGenerateReport: RequestHandler = async (req, res) => {
+  if (!supabaseAdmin) {
+    console.error("Supabase Admin client not initialized");
+    res.status(500).json({ error: "Server configuration error: Supabase not configured" });
+    return;
+  }
   const {
     title, location, time, objective, boysCount, girlsCount,
     leadersCount, category, beneficiary, description, evaluationPositive,

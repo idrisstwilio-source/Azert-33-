@@ -10,12 +10,16 @@ if (!supabaseUrl || !supabaseServiceKey) {
   console.warn("Missing Supabase server-side environment variables");
 }
 
-export const supabaseAdmin = createClient(
-  supabaseUrl || "",
-  supabaseServiceKey || ""
-);
+export const supabaseAdmin =
+  supabaseUrl && supabaseServiceKey
+    ? createClient(supabaseUrl, supabaseServiceKey)
+    : null as any;
 
 export async function ensureBucketExists(bucketName: string) {
+  if (!supabaseAdmin) {
+    console.error(`Cannot check/create bucket ${bucketName}: Supabase not initialized`);
+    return;
+  }
   try {
     const { data: buckets } = await supabaseAdmin.storage.listBuckets();
     if (!buckets?.find((b) => b.name === bucketName)) {
