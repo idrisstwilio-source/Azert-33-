@@ -4,6 +4,7 @@ import Layout from "@/components/Layout";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const BENEFICIARY_OPTIONS = [
   { id: "ashbal_zahrat", label: "اشبال و زهرات" },
