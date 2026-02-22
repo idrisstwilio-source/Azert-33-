@@ -2,15 +2,26 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const BENEFICIARY_OPTIONS = [
+  { id: "ashbal_zahrat", label: "اشبال و زهرات" },
+  { id: "kashafa_mourshidat", label: "كشافة و مرشدات" },
+  { id: "kashaf_moutaqadim_raidat", label: "كشاف متقدم و رائدات" },
+  { id: "jawala_dalilat", label: "الجوالة و الدليلات" },
+];
 
 export default function AddSession() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedBeneficiaries, setSelectedBeneficiaries] = useState<string[]>([]);
+
   const [formData, setFormData] = useState({
     title: "",
     dateTime: "",
-    targetAudience: "",
     objective: "",
     methodology: "",
     location: "",
@@ -24,8 +35,25 @@ export default function AddSession() {
     }));
   };
 
+  const handleBeneficiaryToggle = (id: string) => {
+    setSelectedBeneficiaries(prev =>
+      prev.includes(id)
+        ? prev.filter(b => b !== id)
+        : [...prev, id]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedBeneficiaries.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "تنبيه",
+        description: "يرجى اختيار فئة مستفيدة واحدة على الأقل.",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -34,7 +62,12 @@ export default function AddSession() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          targetAudience: selectedBeneficiaries.map(id =>
+            BENEFICIARY_OPTIONS.find(opt => opt.id === id)?.label
+          ).join(", "),
+        }),
       });
 
       if (!response.ok) {
@@ -112,17 +145,41 @@ export default function AddSession() {
                   className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all font-bold"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mr-1">الفئة المستهدفة (من؟)</label>
-                <input
-                  type="text"
-                  name="targetAudience"
-                  required
-                  value={formData.targetAudience}
-                  onChange={handleChange}
-                  className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all font-bold"
-                  placeholder="من هم المستفيدون؟"
-                />
+              <div className="space-y-4 col-span-1 md:col-span-2">
+                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mr-1">الفئة المستهدفة (من؟ - اختر واحدة أو أكثر)</label>
+                <div className="flex flex-wrap gap-3">
+                  {BENEFICIARY_OPTIONS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => handleBeneficiaryToggle(option.id)}
+                      className={cn(
+                        "px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all",
+                        selectedBeneficiaries.includes(option.id)
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-gray-100 bg-gray-50 text-gray-400 hover:border-gray-200"
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                {selectedBeneficiaries.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {selectedBeneficiaries.map(id => (
+                      <Badge key={id} variant="secondary" className="px-3 py-1 gap-2 bg-primary/5 text-primary border-primary/10">
+                        {BENEFICIARY_OPTIONS.find(opt => opt.id === id)?.label}
+                        <X
+                          className="w-3 h-3 cursor-pointer hover:text-red-500"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleBeneficiaryToggle(id);
+                          }}
+                        />
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

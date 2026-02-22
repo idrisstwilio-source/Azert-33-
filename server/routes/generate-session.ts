@@ -116,8 +116,8 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
 
       // 2. Logos on sides
       const logoY = 40;
-      doc.image(logoLeft, 40, logoY, { height: 60 });
       doc.image(logoRight, 495, logoY, { height: 60 });
+      doc.image(logoLeft, 40, logoY, { height: 60 });
 
       doc.moveDown(2);
 

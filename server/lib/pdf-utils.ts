@@ -32,8 +32,8 @@ export async function fetchAsset(url: string): Promise<Buffer> {
 export const ASSETS = {
   // Use a reliable Arabic font URL
   ARABIC_FONT: "https://github.com/google/fonts/raw/main/ofl/amiri/Amiri-Regular.ttf",
-  LOGO_LEFT: "https://cdn.builder.io/api/v1/image/assets%2Fd8cf247061ae4e73b8c8529275e40675%2F1e55c030693d429b8a71a3a705492b5e?format=png",
-  LOGO_RIGHT: "https://cdn.builder.io/api/v1/image/assets%2Fd8cf247061ae4e73b8c8529275e40675%2F1850b5e832b4437a9da2e8ba900aa4ce?format=png",
+  LOGO_RIGHT: "https://cdn.builder.io/api/v1/image/assets%2F18f62c6725dc4e4692b4078094995cb1%2F03dd7ee8ca894cb3bf67918e9642d94d?format=webp",
+  LOGO_LEFT: "https://cdn.builder.io/api/v1/image/assets%2F18f62c6725dc4e4692b4078094995cb1%2F2518d3e2adc6405a8bdd08d2c86b2516?format=webp",
 };
 
 export const BISMILLAH = "بسم الله الرحمن الرحيم";
