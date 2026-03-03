@@ -11,41 +11,50 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
     evaluationNegative, recommendations
   } = req.body;
 
-  const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY,
-  });
+  let reformulatedContent = description;
+
+  if (process.env.GROQ_API_KEY) {
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+
+    try {
+      // 1. AI Reformulation
+      const prompt = `
+        أنت مساعد خبير في الكشافة الحسنية المغربية (SHM).
+        قم بإعادة صياغة التقرير التالي بشكل احترافي ومؤسساتي، مع احترام القيم الكشفية.
+        يجب أن يكون التقرير واضحاً ومنظماً وجاهزاً للأرشفة باللغة العربية.
+
+        البيانات الأصلية:
+        العنوان: ${title}
+        المكان: ${location}
+        الوقت: ${time}
+        الهدف: ${objective}
+        الفئة: ${category}
+        لفائدة: ${beneficiary}
+        الوصف: ${description}
+        النقط الإيجابية: ${evaluationPositive}
+        النقط السلبية: ${evaluationNegative}
+        التوصيات: ${recommendations}
+
+        أجب فقط بالمحتوى المعاد صياغته، منظماً حسب الأقسام.
+      `;
+
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.3-70b-versatile",
+      });
+
+      reformulatedContent = chatCompletion.choices[0]?.message?.content || description;
+    } catch (aiError) {
+      console.error("AI Reformulation Error:", aiError);
+      // Fallback to original description if AI fails
+    }
+  }
 
   try {
     // 0. Ensure bucket exists
     await ensureBucketExists("shm-reports");
-
-    // 1. AI Reformulation
-    const prompt = `
-      أنت مساعد خبير في الكشافة الحسنية المغربية (SHM).
-      قم بإعادة صياغة التقرير التالي بشكل احترافي ومؤسساتي، مع احترام القيم الكشفية.
-      يجب أن يكون التقرير واضحاً ومنظماً وجاهزاً للأرشفة باللغة العربية.
-
-      البيانات الأصلية:
-      العنوان: ${title}
-      المكان: ${location}
-      الوقت: ${time}
-      الهدف: ${objective}
-      الفئة: ${category}
-      لفائدة: ${beneficiary}
-      الوصف: ${description}
-      النقط الإيجابية: ${evaluationPositive}
-      النقط السلبية: ${evaluationNegative}
-      التوصيات: ${recommendations}
-
-      أجب فقط بالمحتوى المعاد صياغته، منظماً حسب الأقسام.
-    `;
-
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [{ role: "user", content: prompt }],
-      model: "llama-3.3-70b-versatile",
-    });
-
-    const reformulatedContent = chatCompletion.choices[0]?.message?.content || description;
 
     // 2. Generate PDF
     const doc = new PDFDocument();

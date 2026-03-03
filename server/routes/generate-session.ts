@@ -8,37 +8,46 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
     title, dateTime, targetAudience, objective, methodology, location
   } = req.body;
 
-  const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY,
-  });
+  let reformulatedContent = methodology;
+
+  if (process.env.GROQ_API_KEY) {
+    const groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+
+    try {
+      // 1. AI Reformulation
+      const prompt = `
+        أنت مساعد خبير في الكشافة الحسنية المغربية (SHM).
+        قم بإعادة صياغة بطاقة الجلسة التالية بشكل احترافي وبيداغوجي.
+        استخدم طريقة 5W لهيكلة المحتوى بشكل أمثل باللغة العربية.
+
+        البيانات الأصلية:
+        العنوان: ${title}
+        متى: ${dateTime}
+        أين: ${location}
+        من (الفئة): ${targetAudience}
+        لماذا (الهدف): ${objective}
+        كيف (الطريقة): ${methodology}
+
+        أجب فقط بالمحتوى المعاد صياغته والمنظم.
+      `;
+
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.3-70b-versatile",
+      });
+
+      reformulatedContent = chatCompletion.choices[0]?.message?.content || methodology;
+    } catch (aiError) {
+      console.error("AI Reformulation Error:", aiError);
+      // Fallback to original methodology if AI fails
+    }
+  }
 
   try {
     // 0. Ensure bucket exists
     await ensureBucketExists("shm-sessions");
-
-    // 1. AI Reformulation
-    const prompt = `
-      أنت مساعد خبير في الكشافة الحسنية المغربية (SHM).
-      قم بإعادة صياغة بطاقة الجلسة التالية بشكل احترافي وبيداغوجي.
-      استخدم طريقة 5W لهيكلة المحتوى بشكل أمثل باللغة العربية.
-
-      البيانات الأصلية:
-      العنوان: ${title}
-      متى: ${dateTime}
-      أين: ${location}
-      من (الفئة): ${targetAudience}
-      لماذا (الهدف): ${objective}
-      كيف (الطريقة): ${methodology}
-
-      أجب فقط بالمحتوى المعاد صياغته والمنظم.
-    `;
-
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [{ role: "user", content: prompt }],
-      model: "llama-3.3-70b-versatile",
-    });
-
-    const reformulatedContent = chatCompletion.choices[0]?.message?.content || methodology;
 
     // 2. Generate PDF
     const doc = new PDFDocument();
