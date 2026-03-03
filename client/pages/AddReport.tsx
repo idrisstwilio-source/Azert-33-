@@ -44,15 +44,13 @@ export default function AddReport() {
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) {
-        throw new Error("Erreur lors de la génération du rapport");
-      }
+      const data = await response.json();
 
       toast({
         title: "تم بنجاح",
         description: "تم إنشاء التقرير وحفظه بنجاح.",
       });
-      navigate("/dashboard");
+      navigate("/report-success", { state: { pdfUrl: data.pdfUrl, title: formData.title } });
     } catch (error) {
       console.error(error);
       toast({

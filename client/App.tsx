@@ -12,6 +12,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
 import AddReport from "./pages/AddReport";
+import ReportSuccess from "./pages/ReportSuccess";
 import AddSession from "./pages/AddSession";
 import Program from "./pages/Program";
 import Ideas from "./pages/Ideas";
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/add-report" element={<AddReport />} />
+          <Route path="/report-success" element={<ReportSuccess />} />
           <Route path="/add-session" element={<AddSession />} />
           <Route path="/program" element={<Program />} />
           <Route path="/ideas" element={<Ideas />} />
