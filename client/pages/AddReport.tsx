@@ -44,6 +44,11 @@ export default function AddReport() {
         body: JSON.stringify(formData),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erreur lors de la génération du rapport");
+      }
+
       const data = await response.json();
 
       toast({
