@@ -3,12 +3,27 @@ import Groq from "groq-sdk";
 import PDFDocument from "pdfkit";
 import { supabaseAdmin, ensureBucketExists } from "../lib/supabase";
 import { Readable } from "stream";
+import path from "path";
+import arabicReshaper from 'arabic-reshaper';
+
+// Simple Arabic RTL helper for PDFKit
+// Handles Shaping + Reversal
+const prepareArabic = (text: string) => {
+  if (!text) return "";
+  try {
+    const reshaped = arabicReshaper.reshape(text);
+    return reshaped.split('').reverse().join('');
+  } catch (e) {
+    console.error("Arabic Preparation Error:", e);
+    return text;
+  }
+};
 
 export const handleGenerateReport: RequestHandler = async (req, res) => {
   const {
     title, location, time, objective, boysCount, girlsCount,
     leadersCount, category, beneficiary, description, evaluationPositive,
-    evaluationNegative, recommendations
+    evaluationNegative, recommendations, logoUrls = []
   } = req.body;
 
   let reformulatedContent = description;
@@ -19,7 +34,6 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
     });
 
     try {
-      // 1. AI Reformulation
       const prompt = `
         أنت مساعد خبير في الكشافة الحسنية المغربية (SHM).
         قم بإعادة صياغة التقرير التالي بشكل احترافي ومؤسساتي، مع احترام القيم الكشفية.
@@ -48,16 +62,13 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
       reformulatedContent = chatCompletion.choices[0]?.message?.content || description;
     } catch (aiError) {
       console.error("AI Reformulation Error:", aiError);
-      // Fallback to original description if AI fails
     }
   }
 
   try {
-    // 0. Ensure bucket exists
     await ensureBucketExists("shm-reports");
 
-    // 2. Generate PDF
-    const doc = new PDFDocument();
+    const doc = new PDFDocument({ margin: 50 });
     const buffers: Buffer[] = [];
     doc.on("data", buffers.push.bind(buffers));
     
@@ -66,7 +77,6 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
         const pdfBuffer = Buffer.concat(buffers);
         const fileName = `report_${Date.now()}.pdf`;
 
-        // 3. Upload to Supabase Storage
         const { data: storageData, error: storageError } = await supabaseAdmin
           .storage
           .from("shm-reports")
@@ -83,7 +93,6 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
           .from("shm-reports")
           .getPublicUrl(fileName);
 
-        // 4. Save to Database
         const { error: dbError } = await supabaseAdmin
           .from("reports")
           .insert({
@@ -114,33 +123,80 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
         resolve(null);
       });
 
-      // PDF Content (Basic Arabic support in PDFKit might be limited without a font, but let's try)
-      doc.fontSize(20).text("تقرير نشاط - الكشافة الحسنية المغربية", { align: "center" });
-      doc.moveDown();
-      doc.fontSize(14).text(`العنوان: ${title}`);
-      doc.text(`المكان: ${location}`);
-      doc.text(`الوقت: ${time}`);
-      doc.text(`عدد القادة: ${leadersCount}`);
-      doc.text(`الفئة: ${category}`);
-      doc.text(`لفائدة: ${beneficiary}`);
-      doc.text(`المشاركون: ${boysCount} ذكور / ${girlsCount} إناث`);
-      doc.moveDown();
-      doc.fontSize(16).text("الهدف", { underline: true });
-      doc.fontSize(12).text(objective);
-      doc.moveDown();
-      doc.fontSize(16).text("الوصف (إعادة صياغة IA)", { underline: true });
-      doc.fontSize(12).text(reformulatedContent);
-      doc.moveDown();
-      doc.fontSize(16).text("التقييم", { underline: true });
-      doc.text("النقط الإيجابية:");
-      doc.text(evaluationPositive);
-      doc.text("النقط السلبية:");
-      doc.text(evaluationNegative);
-      doc.moveDown();
-      doc.fontSize(16).text("التوصيات", { underline: true });
-      doc.fontSize(12).text(recommendations);
+      // Load Fonts
+      const regularFont = path.join(process.cwd(), "server/assets/Amiri-Regular.ttf");
+      const boldFont = path.join(process.cwd(), "server/assets/Amiri-Bold.ttf");
+
+      // Header with Logos
+      const logoSize = 60;
+      const logoY = 40;
       
-      doc.end();
+      const drawLogos = async () => {
+        let currentX = 50;
+        for (const url of logoUrls.slice(0, 3)) {
+          try {
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            doc.image(Buffer.from(arrayBuffer), currentX, logoY, { width: logoSize });
+            currentX += logoSize + 10;
+          } catch (e) {
+            console.error("Logo Download Error:", e);
+          }
+        }
+      };
+
+      // Helper for sections
+      const addSection = (titleText: string, contentText: string, isBold = false) => {
+        doc.font(boldFont).fontSize(14).text(prepareArabic(titleText), { align: "right" });
+        doc.font(regularFont).fontSize(11).text(prepareArabic(contentText), { align: "right" });
+        doc.moveDown(0.5);
+      };
+
+      const startGeneration = async () => {
+        await drawLogos();
+        
+        doc.moveDown(4);
+        doc.font(boldFont).fontSize(22).text(prepareArabic("تقرير نشاط - الكشافة الحسنية المغربية"), { align: "center" });
+        doc.font(regularFont).fontSize(10).text(prepareArabic("المندوبية الإقليمية لآسفي"), { align: "center" });
+        doc.moveDown();
+
+        // Main info block (Right-aligned)
+        doc.font(boldFont).fontSize(16).text(prepareArabic(title), { align: "right" });
+        doc.font(regularFont).fontSize(12);
+        doc.text(`${prepareArabic("المكان")}: ${prepareArabic(location)}`, { align: "right" });
+        doc.text(`${prepareArabic("الوقت")}: ${prepareArabic(time)}`, { align: "right" });
+        doc.text(`${prepareArabic("الفئات المعنية")}: ${prepareArabic(category)}`, { align: "right" });
+        doc.text(`${prepareArabic("لفائدة")}: ${prepareArabic(beneficiary)}`, { align: "right" });
+        doc.text(`${prepareArabic("عدد القادة")}: ${leadersCount}`, { align: "right" });
+        doc.text(`${prepareArabic("المشاركون")}: ${boysCount} ${prepareArabic("ذكور")} / ${girlsCount} ${prepareArabic("إناث")}`, { align: "right" });
+        
+        doc.moveDown();
+        doc.rect(50, doc.y, doc.page.width - 100, 1).fill("#EEEEEE");
+        doc.moveDown();
+
+        addSection("الهدف / السياق", objective);
+        addSection("الوصف التفصيلي (إعادة صياغة مؤسساتية)", reformulatedContent);
+        
+        // Evaluation grid
+        doc.font(boldFont).fontSize(14).text(prepareArabic("التقييم"), { align: "right" });
+        doc.moveDown(0.2);
+        doc.font(boldFont).fontSize(11).fillColor("#16a34a").text(prepareArabic("النقط الإيجابية:"), { align: "right" });
+        doc.font(regularFont).fillColor("black").text(prepareArabic(evaluationPositive), { align: "right" });
+        
+        doc.moveDown(0.5);
+        doc.font(boldFont).fontSize(11).fillColor("#dc2626").text(prepareArabic("النقط السلبية:"), { align: "right" });
+        doc.font(regularFont).fillColor("black").text(prepareArabic(evaluationNegative), { align: "right" });
+        
+        doc.moveDown();
+        addSection("التوصيات والمقترحات", recommendations);
+
+        doc.moveDown(2);
+        doc.fontSize(10).text(prepareArabic("حرر بتاريخ: ") + new Date().toLocaleDateString("ar-MA"), { align: "left" });
+        
+        doc.end();
+      };
+
+      startGeneration();
     });
 
   } catch (error) {

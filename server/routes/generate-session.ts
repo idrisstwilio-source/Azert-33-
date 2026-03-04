@@ -2,6 +2,16 @@ import { RequestHandler } from "express";
 import Groq from "groq-sdk";
 import PDFDocument from "pdfkit";
 import { supabaseAdmin, ensureBucketExists } from "../lib/supabase";
+import path from "path";
+import arabicReshaper from 'arabic-reshaper';
+
+// Helper to handle Arabic text for PDFKit
+const prepareArabic = (text: string) => {
+  if (!text) return "";
+  const reshaped = arabicReshaper.reshape(text);
+  // Basic reversal for RTL support in PDFKit's LTR renderer
+  return reshaped.split('').reverse().join('');
+};
 
 export const handleGenerateSession: RequestHandler = async (req, res) => {
   const {
@@ -16,7 +26,6 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
     });
 
     try {
-      // 1. AI Reformulation
       const prompt = `
         أنت مساعد خبير في الكشافة الحسنية المغربية (SHM).
         قم بإعادة صياغة بطاقة الجلسة التالية بشكل احترافي وبيداغوجي.
@@ -41,16 +50,13 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
       reformulatedContent = chatCompletion.choices[0]?.message?.content || methodology;
     } catch (aiError) {
       console.error("AI Reformulation Error:", aiError);
-      // Fallback to original methodology if AI fails
     }
   }
 
   try {
-    // 0. Ensure bucket exists
     await ensureBucketExists("shm-sessions");
 
-    // 2. Generate PDF
-    const doc = new PDFDocument();
+    const doc = new PDFDocument({ margin: 50 });
     const buffers: Buffer[] = [];
     doc.on("data", buffers.push.bind(buffers));
     
@@ -59,7 +65,6 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
         const pdfBuffer = Buffer.concat(buffers);
         const fileName = `session_${Date.now()}.pdf`;
 
-        // 3. Upload to Supabase Storage
         const { data: storageData, error: storageError } = await supabaseAdmin
           .storage
           .from("shm-sessions")
@@ -76,7 +81,6 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
           .from("shm-sessions")
           .getPublicUrl(fileName);
 
-        // 4. Save to Database
         const { error: dbError } = await supabaseAdmin
           .from("sessions")
           .insert({
@@ -100,19 +104,35 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
         resolve(null);
       });
 
-      // PDF Content
-      doc.fontSize(20).text("بطاقة جلسة - الكشافة الحسنية المغربية", { align: "center" });
+      // Fonts
+      const regularFont = path.join(process.cwd(), "server/assets/Amiri-Regular.ttf");
+      const boldFont = path.join(process.cwd(), "server/assets/Amiri-Bold.ttf");
+
+      doc.font(boldFont).fontSize(22).text(prepareArabic("بطاقة جلسة - الكشافة الحسنية المغربية"), { align: "center" });
+      doc.font(regularFont).fontSize(10).text(prepareArabic("فوج الفاروق - آسفي"), { align: "center" });
+      doc.moveDown(2);
+
+      const addDetail = (label: string, value: string) => {
+        doc.font(boldFont).fontSize(12).text(prepareArabic(label) + ":", { align: "right", continued: true });
+        doc.font(regularFont).fontSize(12).text(" " + prepareArabic(value), { align: "right" });
+        doc.moveDown(0.5);
+      };
+
+      addDetail("العنوان", title);
+      addDetail("التاريخ والوقت", dateTime);
+      addDetail("المكان", location);
+      addDetail("الفئة المستهدفة", targetAudience);
+      
       doc.moveDown();
-      doc.fontSize(14).text(`العنوان: ${title}`);
-      doc.text(`التاريخ/الوقت: ${dateTime}`);
-      doc.text(`المكان: ${location}`);
-      doc.text(`الفئة المستهدفة: ${targetAudience}`);
+      doc.rect(50, doc.y, doc.page.width - 100, 1).fill("#EEEEEE");
       doc.moveDown();
-      doc.fontSize(16).text("الهدف (Why)", { underline: true });
-      doc.fontSize(12).text(objective);
+
+      doc.font(boldFont).fontSize(16).text(prepareArabic("الهدف (Why)"), { align: "right" });
+      doc.font(regularFont).fontSize(12).text(prepareArabic(objective), { align: "right" });
       doc.moveDown();
-      doc.fontSize(16).text("طريقة السير / المحتوى (How)", { underline: true });
-      doc.fontSize(12).text(reformulatedContent);
+
+      doc.font(boldFont).fontSize(16).text(prepareArabic("طريقة السير / المحتوى (How)"), { align: "right" });
+      doc.font(regularFont).fontSize(12).text(prepareArabic(reformulatedContent), { align: "right" });
       
       doc.end();
     });
