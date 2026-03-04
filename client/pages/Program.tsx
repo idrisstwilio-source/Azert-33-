@@ -116,7 +116,7 @@ export default function Program() {
   };
 
   return (
-    <Layout currentPage="program">
+    <Layout>
       <div className="mb-12">
         <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-l from-red-600 to-purple-600 bg-clip-text text-transparent mb-2">
           البرنامج

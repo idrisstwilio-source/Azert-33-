@@ -67,7 +67,7 @@ export default function Login() {
             <img
               src="https://cdn.builder.io/api/v1/image/assets%2Fd8cf247061ae4e73b8c8529275e40675%2F0b341ebd078c40328e112bce53368850?format=webp&width=800&height=1200"
               alt="Logo SHM"
-              className="w-24 h-24 mx-auto mb-6 object-contain animate-bounce duration-[3s]"
+              className="w-24 h-24 mx-auto mb-6 object-contain animate-bounce duration-&lsqb;3s&rsqb;"
             />
             <h1 className="text-3xl font-black shm-text-gradient mb-2">
               تسجيل الدخول

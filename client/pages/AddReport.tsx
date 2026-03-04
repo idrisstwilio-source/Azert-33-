@@ -120,7 +120,7 @@ export default function AddReport() {
                 <input
                   type="number"
                   name="leadersCount"
-                  min="0"
+                  min={0}
                   required
                   value={formData.leadersCount}
                   onChange={handleChange}
@@ -171,7 +171,7 @@ export default function AddReport() {
                 <input
                   type="number"
                   name="boysCount"
-                  min="0"
+                  min={0}
                   value={formData.boysCount}
                   onChange={handleChange}
                   className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all font-bold text-center"
@@ -182,7 +182,7 @@ export default function AddReport() {
                 <input
                   type="number"
                   name="girlsCount"
-                  min="0"
+                  min={0}
                   value={formData.girlsCount}
                   onChange={handleChange}
                   className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all font-bold text-center"

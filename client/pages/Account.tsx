@@ -130,7 +130,7 @@ export default function Account() {
 
   if (loading) {
     return (
-      <Layout currentPage="account">
+      <Layout>
         <div className="flex justify-center items-center min-h-96">
           <div className="inline-block animate-spin">
             <div className="w-8 h-8 border-4 border-purple-300 border-t-purple-600 rounded-full"></div>
@@ -142,7 +142,7 @@ export default function Account() {
 
   if (!userData) {
     return (
-      <Layout currentPage="account">
+      <Layout>
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
           <p className="text-red-600 font-bold">خطأ في تحميل البيانات. يرجى تحديث الصفحة.</p>
         </div>
@@ -151,7 +151,7 @@ export default function Account() {
   }
 
   return (
-    <Layout currentPage="account">
+    <Layout>
       <div className="mb-8">
         <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-l from-red-600 to-purple-600 bg-clip-text text-transparent mb-4">
           حسابي

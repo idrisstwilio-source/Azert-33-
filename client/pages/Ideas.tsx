@@ -87,7 +87,7 @@ export default function Ideas() {
   };
 
   return (
-    <Layout currentPage="ideas">
+    <Layout>
       <div className="mb-12">
         <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-l from-red-600 to-purple-600 bg-clip-text text-transparent mb-2">
           صندوق الأفكار
@@ -190,7 +190,7 @@ export default function Ideas() {
                   value={formData.budget}
                   onChange={handleChange}
                   placeholder="كم ميزانية تقدّر أن تحتاج فكرتك؟"
-                  min="0"
+                  min={0}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all"
                 />
               </div>

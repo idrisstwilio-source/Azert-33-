@@ -448,7 +448,7 @@ export default function Register() {
                         setErrors((prev) => ({ ...prev, userPhone: "" }));
                       }}
                       placeholder="6xx xxx xxx"
-                      maxLength="9"
+                      maxLength={9}
                       className={`flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 ${
                         errors.userPhone ? "border-red-500" : "border-gray-300"
                       }`}
