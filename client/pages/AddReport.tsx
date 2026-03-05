@@ -97,28 +97,25 @@ export default function AddReport() {
     setIsSubmitting(true);
 
     try {
-      // 1. Upload logos if any
-      const uploadedLogoUrls: string[] = [];
-      for (const logo of logos) {
-        const fileName = `${Date.now()}_${logo.name}`;
-        const { data, error } = await supabase.storage
-          .from("shm-reports")
-          .upload(`logos/${fileName}`, logo);
-        
-        if (error) throw error;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from("shm-reports")
-          .getPublicUrl(data.path);
-        
-        uploadedLogoUrls.push(publicUrl);
-      }
+      // 1. Prepare logos as Base64 strings
+      const logosData = await Promise.all(
+        logos.map(async (logo) => {
+          const reader = new FileReader();
+          return new Promise<{ name: string; type: string; data: string }>((resolve) => {
+            reader.onload = (e) => {
+              const base64 = (e.target?.result as string).split(",")[1];
+              resolve({ name: logo.name, type: logo.type, data: base64 });
+            };
+            reader.readAsDataURL(logo);
+          });
+        })
+      );
 
       // 2. Submit report data
       const payload = {
         ...formData,
         category: selectedCategories.join(", "),
-        logoUrls: uploadedLogoUrls,
+        logos: logosData,
       };
 
       const response = await fetch("/api/generate-report", {
