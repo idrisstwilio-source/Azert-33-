@@ -5,14 +5,21 @@ import { supabaseAdmin, ensureBucketExists } from "../lib/supabase";
 import { Readable } from "stream";
 import path from "path";
 import arabicReshaper from 'arabic-reshaper';
+import Bidi from 'bidi-js';
 
-// Simple Arabic RTL helper for PDFKit
-// Handles Shaping + Reversal
+const bidi = new Bidi();
+const { convertArabic } = arabicReshaper;
+
+// Robust Arabic/Mixed text helper for PDFKit
 const prepareArabic = (text: string) => {
   if (!text) return "";
   try {
-    const reshaped = arabicReshaper.reshape(text);
-    return reshaped.split('').reverse().join('');
+    // 1. Shaping (Contextual forms)
+    const reshaped = convertArabic(text);
+    // 2. Bidi reordering (visual order)
+    const embeddingLevels = bidi.getEmbeddingLevels(reshaped);
+    const reordered = bidi.reorderChars(reshaped, embeddingLevels);
+    return reordered;
   } catch (e) {
     console.error("Arabic Preparation Error:", e);
     return text;
