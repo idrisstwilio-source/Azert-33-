@@ -174,6 +174,9 @@ export default function Login() {
               </button>
             </div>
           </form>
+          <div className="mt-8 text-center">
+            <p className="text-[10px] text-gray-300 font-bold uppercase tracking-[0.2em]">Version 1.1.0 • SHM Digital</p>
+          </div>
         </div>
       </div>
     </div>
