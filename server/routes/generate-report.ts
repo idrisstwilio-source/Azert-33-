@@ -195,8 +195,8 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
         doc.font(regularFont).fontSize(12);
         doc.text(`${prepareArabic("المكان")}: ${prepareArabic(location)}`, { align: "right" });
         doc.text(`${prepareArabic("الوقت")}: ${prepareArabic(time)}`, { align: "right" });
-        doc.text(`${prepareArabic("الفئات المعنية")}: ${prepareArabic(category)}`, { align: "right" });
-        doc.text(`${prepareArabic("لفائدة")}: ${prepareArabic(beneficiary)}`, { align: "right" });
+        doc.text(`${prepareArabic("الفئة المنظمة")}: ${prepareArabic(category)}`, { align: "right" });
+        doc.text(`${prepareArabic("الفئة المستهدفة")}: ${prepareArabic(beneficiary)}`, { align: "right" });
         doc.text(`${prepareArabic("عدد القادة")}: ${leadersCount}`, { align: "right" });
         doc.text(`${prepareArabic("المشاركون")}: ${boysCount} ${prepareArabic("ذكور")} / ${girlsCount} ${prepareArabic("إناث")}`, { align: "right" });
         

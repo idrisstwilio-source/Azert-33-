@@ -34,7 +34,8 @@ export default function AddReport() {
     recommendations: "",
   });
 
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedOrganizingCategories, setSelectedOrganizingCategories] = useState<string[]>([]);
+  const [selectedTargetCategories, setSelectedTargetCategories] = useState<string[]>([]);
   const [logos, setLogos] = useState<File[]>([]);
   const [logoPreviews, setLogoPreviews] = useState<string[]>([]);
 
@@ -46,8 +47,16 @@ export default function AddReport() {
     }));
   };
 
-  const handleCategoryToggle = (categoryId: string) => {
-    setSelectedCategories((prev) =>
+  const handleOrganizingCategoryToggle = (categoryId: string) => {
+    setSelectedOrganizingCategories((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  const handleTargetCategoryToggle = (categoryId: string) => {
+    setSelectedTargetCategories((prev) =>
       prev.includes(categoryId)
         ? prev.filter((id) => id !== categoryId)
         : [...prev, categoryId]
@@ -85,11 +94,11 @@ export default function AddReport() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedCategories.length === 0) {
+    if (selectedOrganizingCategories.length === 0 || selectedTargetCategories.length === 0) {
       toast({
         variant: "destructive",
         title: "خطأ",
-        description: "يرجى اختيار فئة عمرية واحدة على الأقل.",
+        description: "يرجى اختيار فئة منظمة ومستهدفة واحدة على الأقل.",
       });
       return;
     }
@@ -112,14 +121,20 @@ export default function AddReport() {
       );
 
       // 2. Submit report data
-      const categoryLabels = selectedCategories
+      const organizingCategoryLabels = selectedOrganizingCategories
+        .map((id) => CATEGORIES.find((cat) => cat.id === id)?.label)
+        .filter(Boolean)
+        .join(" - ");
+
+      const targetCategoryLabels = selectedTargetCategories
         .map((id) => CATEGORIES.find((cat) => cat.id === id)?.label)
         .filter(Boolean)
         .join(" - ");
 
       const payload = {
         ...formData,
-        category: categoryLabels,
+        category: organizingCategoryLabels,
+        beneficiary: targetCategoryLabels,
         logos: logosData,
       };
 
@@ -264,18 +279,40 @@ export default function AddReport() {
               </div>
             </div>
 
-            {/* Multi-select Categories */}
+            {/* Organizing Categories */}
             <div className="space-y-4">
-              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mr-1">الفئات العمرية المعنية</label>
+              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mr-1">الفئة المنظمة</label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => handleCategoryToggle(cat.id)}
+                    onClick={() => handleOrganizingCategoryToggle(cat.id)}
                     className={cn(
                       "px-4 py-4 rounded-2xl text-[10px] font-black transition-all border-2",
-                      selectedCategories.includes(cat.id)
+                      selectedOrganizingCategories.includes(cat.id)
+                        ? "shm-gradient text-white border-transparent shadow-lg shadow-primary/20"
+                        : "bg-gray-50 text-gray-400 border-transparent hover:bg-gray-100"
+                    )}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Target Categories (Beneficiary) */}
+            <div className="space-y-4">
+              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mr-1">الفئة المستهدفة</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => handleTargetCategoryToggle(cat.id)}
+                    className={cn(
+                      "px-4 py-4 rounded-2xl text-[10px] font-black transition-all border-2",
+                      selectedTargetCategories.includes(cat.id)
                         ? "shm-gradient text-white border-transparent shadow-lg shadow-primary/20"
                         : "bg-gray-50 text-gray-400 border-transparent hover:bg-gray-100"
                     )}
@@ -287,24 +324,7 @@ export default function AddReport() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mr-1">لفائدة</label>
-                <select
-                  name="beneficiary"
-                  required
-                  value={formData.beneficiary}
-                  onChange={handleChange}
-                  className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-primary/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary/5 transition-all font-bold appearance-none cursor-pointer"
-                >
-                  <option value="">لفائدة من؟...</option>
-                  <option value="ashbal_zahrat">أشبال و زهرات</option>
-                  <option value="kashafa_mourshidat">كشافة و مرشدات</option>
-                  <option value="kashaf_moutaqadim_raidat">كشاف متقدم و رائدات</option>
-                  <option value="jawala_dalilat">الجوالة و الدليلات</option>
-                  <option value="all">الكل</option>
-                </select>
-              </div>
-              <div className="flex gap-6">
+              <div className="flex gap-6 w-full md:col-span-2">
                 <div className="flex-1 space-y-2">
                   <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mr-1">عدد الذكور</label>
                   <input
