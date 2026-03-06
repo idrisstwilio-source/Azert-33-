@@ -25,7 +25,7 @@ const prepareArabic = (text: string) => {
 
 export const handleGenerateSession: RequestHandler = async (req, res) => {
   const {
-    title, dateTime, targetAudience, objective, methodology, location, logoUrls = []
+    title, dateTime, targetAudience, objective, methodology, location, logos = []
   } = req.body;
 
   let reformulatedContent = methodology;
@@ -65,6 +65,29 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
 
   try {
     await ensureBucketExists("shm-sessions");
+
+    // Process logos and upload to storage
+    const logoUrls: string[] = [];
+    for (const logo of (logos as any[]).slice(0, 3)) {
+      try {
+        const fileName = `logo_${Date.now()}_${logo.name}`;
+        const { data, error } = await supabaseAdmin.storage
+          .from("shm-sessions")
+          .upload(`logos/${fileName}`, Buffer.from(logo.data, 'base64'), {
+            contentType: logo.type,
+            upsert: true
+          });
+
+        if (data) {
+          const { data: { publicUrl } } = supabaseAdmin.storage
+            .from("shm-sessions")
+            .getPublicUrl(`logos/${fileName}`);
+          logoUrls.push(publicUrl);
+        }
+      } catch (e) {
+        console.error("Logo Upload Error:", e);
+      }
+    }
 
     const doc = new PDFDocument({ margin: 50 });
     const buffers: Buffer[] = [];

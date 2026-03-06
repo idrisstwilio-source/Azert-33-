@@ -30,7 +30,7 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
   const {
     title, location, time, objective, boysCount, girlsCount,
     leadersCount, category, beneficiary, description, evaluationPositive,
-    evaluationNegative, recommendations, logoUrls = []
+    evaluationNegative, recommendations, logos = []
   } = req.body;
 
   let reformulatedContent = description;
@@ -74,6 +74,29 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
 
   try {
     await ensureBucketExists("shm-reports");
+
+    // Process logos and upload to storage
+    const logoUrls: string[] = [];
+    for (const logo of (logos as any[]).slice(0, 3)) {
+      try {
+        const fileName = `logo_${Date.now()}_${logo.name}`;
+        const { data, error } = await supabaseAdmin.storage
+          .from("shm-reports")
+          .upload(`logos/${fileName}`, Buffer.from(logo.data, 'base64'), {
+            contentType: logo.type,
+            upsert: true
+          });
+
+        if (data) {
+          const { data: { publicUrl } } = supabaseAdmin.storage
+            .from("shm-reports")
+            .getPublicUrl(`logos/${fileName}`);
+          logoUrls.push(publicUrl);
+        }
+      } catch (e) {
+        console.error("Logo Upload Error:", e);
+      }
+    }
 
     const doc = new PDFDocument({ margin: 50 });
     const buffers: Buffer[] = [];

@@ -112,9 +112,14 @@ export default function AddReport() {
       );
 
       // 2. Submit report data
+      const categoryLabels = selectedCategories
+        .map((id) => CATEGORIES.find((cat) => cat.id === id)?.label)
+        .filter(Boolean)
+        .join(" - ");
+
       const payload = {
         ...formData,
-        category: selectedCategories.join(", "),
+        category: categoryLabels,
         logos: logosData,
       };
 
