@@ -181,57 +181,63 @@ export const handleGenerateReport: RequestHandler = async (req, res) => {
         }
       };
 
-      // Helper for sections
-      const addSection = (titleText: string, contentText: string, isBold = false) => {
-        doc.font(boldFont).fontSize(14).text(prepareArabic(titleText), { align: "right" });
-        doc.font(regularFont).fontSize(11).text(prepareArabic(contentText), { align: "right" });
-        doc.moveDown(0.5);
-      };
-
       const startGeneration = async () => {
         await drawLogos();
 
+        doc.moveDown(1);
+        doc.font(boldFont).fontSize(16).text(prepareArabic("بسم الله الرحمن الرحيم"), { align: "center" });
+        doc.font(boldFont).fontSize(14).text(prepareArabic("الكشفية الحسنية المغربية"), { align: "center" });
+        doc.font(boldFont).fontSize(12).text(prepareArabic("فرع آسفي – مجموعة العمل – فوج عمر الفاروق"), { align: "center" });
+
         doc.moveDown(1.5);
-        doc.font(boldFont).fontSize(14).text(prepareArabic("بسم الله الرحمن الرحيم"), { align: "center" });
-        doc.moveDown(0.5);
-        doc.font(boldFont).fontSize(20).text(prepareArabic("الكشافة الحسنية المغربية"), { align: "center" });
-        doc.font(boldFont).fontSize(22).text(prepareArabic("تقرير نشاط"), { align: "center" });
-        doc.font(regularFont).fontSize(10).text(prepareArabic("المندوبية الإقليمية لآسفي"), { align: "center" });
+        doc.font(boldFont).fontSize(18).text(prepareArabic(`تقرير حول ${title}`), { align: "center" });
+        doc.moveDown(1);
+
+        const labelWidth = 120;
+        const dividerX = doc.page.width - 50 - labelWidth;
+        const startY = doc.y;
+
+        const drawRow = (label: string, value: string) => {
+          if (!value || value === "0") return;
+          const currentY = doc.y;
+
+          // Label (Right Column)
+          doc.font(boldFont).fontSize(10).text(prepareArabic(label), dividerX + 10, currentY, {
+            width: labelWidth - 10,
+            align: "right"
+          });
+          const labelEndY = doc.y;
+
+          // Value (Left Column)
+          doc.y = currentY;
+          doc.font(regularFont).fontSize(10).text(prepareArabic(value), 50, currentY, {
+            width: dividerX - 50 - 5,
+            align: "right"
+          });
+          const valueEndY = doc.y;
+
+          doc.y = Math.max(labelEndY, valueEndY) + 12;
+        };
+
+        drawRow("الزمان", time);
+        drawRow("المكان", location);
+        drawRow("الأهداف", objective);
+
+        const participantsStr = `${prepareArabic("الذكور")} ${boysCount} | ${prepareArabic("الإناث")} ${girlsCount} | ${prepareArabic("القادة")} ${leadersCount}`;
+        drawRow(`الحضور (من ${category})`, participantsStr);
+
+        drawRow("لفائدة", beneficiary);
+        drawRow("سير الجلسة", reformulatedContent);
+        drawRow("النقط الإيجابية", evaluationPositive);
+        drawRow("النقط السلبية", evaluationNegative);
+        drawRow("التوصيات", recommendations);
+
+        const endY = doc.y;
+        doc.moveTo(dividerX, startY).lineTo(dividerX, endY).lineWidth(1).stroke("#000000");
+
         doc.moveDown(2);
+        doc.fontSize(9).text(prepareArabic("حرر بتاريخ: ") + new Date().toLocaleDateString("ar-MA"), { align: "left" });
 
-        // Main info block (Right-aligned)
-        doc.font(boldFont).fontSize(16).text(prepareArabic(title), { align: "right" });
-        doc.font(regularFont).fontSize(12);
-        doc.text(`${prepareArabic("المكان")}: ${prepareArabic(location)}`, { align: "right" });
-        doc.text(`${prepareArabic("الوقت")}: ${prepareArabic(time)}`, { align: "right" });
-        doc.text(`${prepareArabic("الفئة المنظمة")}: ${prepareArabic(category)}`, { align: "right" });
-        doc.text(`${prepareArabic("الفئة المستهدفة")}: ${prepareArabic(beneficiary)}`, { align: "right" });
-        doc.text(`${prepareArabic("عدد القادة")}: ${leadersCount}`, { align: "right" });
-        doc.text(`${prepareArabic("المشاركون")}: ${boysCount} ${prepareArabic("ذكور")} / ${girlsCount} ${prepareArabic("إناث")}`, { align: "right" });
-        
-        doc.moveDown();
-        doc.rect(50, doc.y, doc.page.width - 100, 1).fill("#EEEEEE");
-        doc.moveDown();
-
-        addSection("الهدف / السياق", objective);
-        addSection("الوصف التفصيلي (إعادة صياغة مؤسساتية)", reformulatedContent);
-        
-        // Evaluation grid
-        doc.font(boldFont).fontSize(14).text(prepareArabic("التقييم"), { align: "right" });
-        doc.moveDown(0.2);
-        doc.font(boldFont).fontSize(11).fillColor("#16a34a").text(prepareArabic("النقط الإيجابية:"), { align: "right" });
-        doc.font(regularFont).fillColor("black").text(prepareArabic(evaluationPositive), { align: "right" });
-        
-        doc.moveDown(0.5);
-        doc.font(boldFont).fontSize(11).fillColor("#dc2626").text(prepareArabic("النقط السلبية:"), { align: "right" });
-        doc.font(regularFont).fillColor("black").text(prepareArabic(evaluationNegative), { align: "right" });
-        
-        doc.moveDown();
-        addSection("التوصيات والمقترحات", recommendations);
-
-        doc.moveDown(2);
-        doc.fontSize(10).text(prepareArabic("حرر بتاريخ: ") + new Date().toLocaleDateString("ar-MA"), { align: "left" });
-        
         doc.end();
       };
 

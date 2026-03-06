@@ -168,36 +168,51 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
       const startGeneration = async () => {
         await drawLogos();
 
-        doc.moveDown(1.5);
+        doc.moveDown(1);
         doc.font(boldFont).fontSize(14).text(prepareArabic("بسم الله الرحمن الرحيم"), { align: "center" });
-        doc.moveDown(0.5);
-        doc.font(boldFont).fontSize(20).text(prepareArabic("الكشافة الحسنية المغربية"), { align: "center" });
-        doc.font(boldFont).fontSize(22).text(prepareArabic("بطاقة جلسة"), { align: "center" });
-        doc.font(regularFont).fontSize(10).text(prepareArabic("فوج الفاروق - آسفي"), { align: "center" });
-        doc.moveDown(2);
+        doc.font(boldFont).fontSize(12).text(prepareArabic("الكشفية الحسنية المغربية"), { align: "center" });
+        doc.font(boldFont).fontSize(10).text(prepareArabic("فرع آسفي – مجموعة العمل – فوج عمر الفاروق"), { align: "center" });
 
-        const addDetail = (label: string, value: string) => {
-          doc.font(boldFont).fontSize(12).text(prepareArabic(label) + ":", { align: "right", continued: true });
-          doc.font(regularFont).fontSize(12).text(" " + prepareArabic(value), { align: "right" });
-          doc.moveDown(0.5);
+        doc.moveDown(1.5);
+        doc.font(boldFont).fontSize(18).text(prepareArabic(`بطاقة جلسة: ${title}`), { align: "center" });
+        doc.moveDown(1);
+
+        const labelWidth = 120;
+        const dividerX = doc.page.width - 50 - labelWidth;
+        const startY = doc.y;
+
+        const drawRow = (label: string, value: string) => {
+          if (!value) return;
+          const currentY = doc.y;
+
+          // Label (Right Column)
+          doc.font(boldFont).fontSize(10).text(prepareArabic(label), dividerX + 10, currentY, {
+            width: labelWidth - 10,
+            align: "right"
+          });
+          const labelEndY = doc.y;
+
+          // Value (Left Column)
+          doc.y = currentY;
+          doc.font(regularFont).fontSize(10).text(prepareArabic(value), 50, currentY, {
+            width: dividerX - 50 - 5,
+            align: "right"
+          });
+          const valueEndY = doc.y;
+
+          doc.y = Math.max(labelEndY, valueEndY) + 12;
         };
 
-        addDetail("العنوان", title);
-        addDetail("التاريخ والوقت", dateTime);
-        addDetail("المكان", location);
-        addDetail("الفئة المستهدفة", targetAudience);
-        
-        doc.moveDown();
-        doc.rect(50, doc.y, doc.page.width - 100, 1).fill("#EEEEEE");
-        doc.moveDown();
+        drawRow("العنوان", title);
+        drawRow("التاريخ والوقت", dateTime);
+        drawRow("المكان", location);
+        drawRow("الفئة المستهدفة", targetAudience);
+        drawRow("الهدف (Why)", objective);
+        drawRow("طريقة السير / المحتوى (How)", reformulatedContent);
 
-        doc.font(boldFont).fontSize(16).text(prepareArabic("الهدف (Why)"), { align: "right" });
-        doc.font(regularFont).fontSize(12).text(prepareArabic(objective), { align: "right" });
-        doc.moveDown();
+        const endY = doc.y;
+        doc.moveTo(dividerX, startY).lineTo(dividerX, endY).lineWidth(1).stroke("#000000");
 
-        doc.font(boldFont).fontSize(16).text(prepareArabic("طريقة السير / المحتوى (How)"), { align: "right" });
-        doc.font(regularFont).fontSize(12).text(prepareArabic(reformulatedContent), { align: "right" });
-        
         doc.end();
       };
 
