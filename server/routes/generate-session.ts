@@ -14,7 +14,7 @@ const prepareArabic = (text: string) => {
   if (!text) return "";
   try {
     const reshaped = convertArabic(text);
-    const embeddingLevels = bidi.getEmbeddingLevels(reshaped);
+    const embeddingLevels = bidi.getEmbeddingLevels(reshaped, "rtl");
     const reordered = bidi.reorderChars(reshaped, embeddingLevels);
     return reordered;
   } catch (e) {
@@ -68,12 +68,16 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
 
     // Process logos and upload to storage
     const logoUrls: string[] = [];
+    const logoBuffers: { data: Buffer; type: string }[] = [];
     for (const logo of (logos as any[]).slice(0, 3)) {
       try {
+        const buffer = Buffer.from(logo.data, 'base64');
+        logoBuffers.push({ data: buffer, type: logo.type });
+
         const fileName = `logo_${Date.now()}_${logo.name}`;
         const { data, error } = await supabaseAdmin.storage
           .from("shm-sessions")
-          .upload(`logos/${fileName}`, Buffer.from(logo.data, 'base64'), {
+          .upload(`logos/${fileName}`, buffer, {
             contentType: logo.type,
             upsert: true
           });
@@ -89,7 +93,7 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
       }
     }
 
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: 50, layout: "portrait" });
     const buffers: Buffer[] = [];
     doc.on("data", buffers.push.bind(buffers));
     
@@ -142,28 +146,33 @@ export const handleGenerateSession: RequestHandler = async (req, res) => {
       const boldFont = path.join(process.cwd(), "server/assets/Amiri-Bold.ttf");
 
       // Header with Logos
-      const logoSize = 60;
+      const logoSize = 100;
       const logoY = 40;
-      
+
       const drawLogos = async () => {
         let currentX = 50;
-        for (const url of logoUrls.slice(0, 3)) {
+        for (const logo of logoBuffers) {
           try {
-            const response = await fetch(url);
-            const arrayBuffer = await response.arrayBuffer();
-            doc.image(Buffer.from(arrayBuffer), currentX, logoY, { width: logoSize });
-            currentX += logoSize + 10;
+            doc.image(logo.data, currentX, logoY, {
+              fit: [logoSize, logoSize],
+              align: 'center',
+              valign: 'center'
+            });
+            currentX += logoSize + 15;
           } catch (e) {
-            console.error("Logo Download Error:", e);
+            console.error("Logo Placement Error:", e);
           }
         }
       };
 
       const startGeneration = async () => {
         await drawLogos();
-        
-        doc.moveDown(4);
-        doc.font(boldFont).fontSize(22).text(prepareArabic("بطاقة جلسة - الكشافة الحسنية المغربية"), { align: "center" });
+
+        doc.moveDown(1.5);
+        doc.font(boldFont).fontSize(14).text(prepareArabic("بسم الله الرحمن الرحيم"), { align: "center" });
+        doc.moveDown(0.5);
+        doc.font(boldFont).fontSize(20).text(prepareArabic("الكشافة الحسنية المغربية"), { align: "center" });
+        doc.font(boldFont).fontSize(22).text(prepareArabic("بطاقة جلسة"), { align: "center" });
         doc.font(regularFont).fontSize(10).text(prepareArabic("فوج الفاروق - آسفي"), { align: "center" });
         doc.moveDown(2);
 
